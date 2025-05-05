@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced MQTT Web Client</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/4.3.7/mqtt.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #f72585;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --danger-color: #ef233c;
+            --dark-color: #2b2d42;
+            --light-color: #f8f9fa;
+            --gray-color: #adb5bd;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        header {
+            background-color: white;
+            padding: 15px 20px;
+            box-shadow: var(--box-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            color: var(--primary-color);
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--gray-color);
+        }
+
+        .status-indicator.connected {
+            background-color: var(--success-color);
+            box-shadow: 0 0 8px var(--success-color);
+        }
+
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+        }
+
+        .sidebar {
+            background-color: white;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 300px;
+            transition: transform 0.3s ease;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .toolbar {
+            background-color: white;
+            padding: 10px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .toggle-sidebar {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .message-area {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            padding: 20px;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .message-panel, .publish-panel {
+            background-color: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--dark-color);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title i {
+            color: var(--primary-color);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+
+        .form-row > div {
+            flex: 1;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 5px;
+            color: var(--dark-color);
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+
+        textarea {
+            resize: none;
+            min-height: 100px;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+        }
+
+        .btn-outline:hover {
+            background-color: rgba(67, 97, 238, 0.1);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #d90429;
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #00b4d8;
+        }
+
+        .btn:disabled {
+            background-color: var(--gray-color);
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .connection-info {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: var(--border-radius);
+            margin-top: 10px;
+            font-size: 0.8rem;
+        }
+
+        .connection-info p {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .connection-info span:first-child {
+            font-weight: 500;
+            color: var(--dark-color);
+        }
+
+        .connection-info span:last-child {
+            color: #495057;
+        }
+
+        #messageLog {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+        }
+
+        .message {
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            word-break: break-word;
+        }
+
+        .received {
+            background-color: rgba(67, 97, 238, 0.1);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .published {
+            background-color: rgba(248, 150, 30, 0.1);
+            border-left: 3px solid var(--warning-color);
+        }
+
+        .system {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-left: 3px solid var(--gray-color);
+        }
+
+        .error {
+            background-color: rgba(239, 35, 60, 0.1);
+            border-left: 3px solid var(--danger-color);
+        }
+
+        .timestamp {
+            color: #6c757d;
+            font-size: 0.75rem;
+            margin-right: 8px;
+        }
+
+        .topic {
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-right: 5px;
+        }
+
+        .subscriptions-list {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .subscription-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+        }
+
+        .subscription-item:last-child {
+            border-bottom: none;
+        }
+
+        .subscription-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .subscription-btn {
+            background: none;
+            border: none;
+            color: var(--gray-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+
+        .subscription-btn:hover {
+            color: var(--danger-color);
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .tab {
+            padding: 8px 15px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gray-color);
+            white-space: nowrap;
+        }
+
+        .tab.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .message-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .message-controls select {
+            flex: 0 0 100px;
+        }
+
+        .message-controls button {
+            flex: 1;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: var(--gray-color);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: var(--transition);
+        }
+
+        .clear-btn:hover {
+            color: var(--danger-color);
+        }
+
+        .search-bar {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .search-bar button {
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        .history-item {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .history-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .history-topic {
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .history-message {
+            color: #6c757d;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Notification toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            margin-bottom: 10px;
+            border-radius: var(--border-radius);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--box-shadow);
+            animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+            opacity: 0;
+            max-width: 350px;
+        }
+
+        .toast.success {
+            background-color: var(--success-color);
+        }
+
+        .toast.error {
+            background-color: var(--danger-color);
+        }
+
+        .toast.warning {
+            background-color: var(--warning-color);
+        }
+
+        .toast.info {
+            background-color: var(--primary-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        /* Responsive styles */
+        @media (max-width: 992px) {
+            .message-area {
+                flex-direction: column;
+            }
+            
+            .message-panel, .publish-panel {
+                height: 50%;
+            }
+
+            #messageLog {
+                max-height: 300px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-container {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 60px;
+                bottom: 0;
+                z-index: 100;
+                transform: translateX(-100%);
+                width: 85%;
+                max-width: 300px;
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                top: 60px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 90;
+            }
+
+            .sidebar-overlay.active {
+                display: block;
+            }
+            
+            .toggle-sidebar {
+                display: block;
+            }
+
+            .content {
+                width: 100%;
+            }
+            
+            .message-area {
+                padding: 10px;
+            }
+
+            .form-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn-group .btn {
+                width: 100%;
+            }
+
+            .message-controls {
+                flex-direction: column;
+            }
+
+            .message-controls select, 
+            .message-controls button {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo h1 {
+                font-size: 1.2rem;
+            }
+
+            .connection-status span {
+                font-size: 0.8rem;
+            }
+
+            .panel-title {
+                font-size: 1rem;
+            }
+
+            .toolbar {
+                padding: 10px;
+            }
+
+            .tabs {
+                padding-left: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <i class="fas fa-project-diagram"></i>
+            <h1>MQTT Dashboard</h1>
+        </div>
+        <div class="connection-status">
+            <div class="status-indicator"></div>
+            <span>Disconnected</span>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <div class="sidebar-overlay"></div>
+        <div class="sidebar">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title"><i class="fas fa-plug"></i> Connection</h2>
+                </div>
+                
+                <div class="form-group">
+                    <label for="broker">Broker URL</label>
+                    <select id="broker" class="form-control">
+                        <option value="wss://broker.hivemq.com:8884/mqtt">HiveMQ Public</option>
+                        <option value="wss://test.mosquitto.org:8081">Mosquitto Test</option>
+                        <option value="wss://mqtt.eclipseprojects.io:443/mqtt">Eclipse Foundation</option>
+                        <option value="wss://broker.emqx.io:8084/mqtt">EMQX Public</option>
+                        <option value="custom">Custom Broker</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="customBrokerGroup" style="display: none;">
+                    <label for="customBroker">Custom URL</label>
+                    <input type="text" id="customBroker" placeholder="wss://your.broker.com:8884/mqtt">
+                </div>
+                
+                <div class="form-group">
+                    <label for="clientId">Client ID</label>
+                    <input type="text" id="clientId" placeholder="Auto-generated if empty">
+                </div>
+                
+                <div class="form-group">
+                    <label for="username">Username (optional)</label>
+                    <input type="text" id="username" placeholder="Username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password (optional)</label>
+                    <input type="password" id="password" placeholder="Password">
+                </div>
+                
+                <div class="btn-group">
+                    <button id="connectBtn" class="btn btn-primary">
+                        <i class="fas fa-link"></i> Connect
+                    </button>
+                    <button id="disconnectBtn" class="btn btn-danger" disabled>
+                        <i class="fas fa-unlink"></i> Disconnect
+                    </button>
+                </div>
+                
+                <div class="connection-info" id="connectionInfo" style="display: none;">
+                    <p><span>Status:</span> <span id="connectionStatus">Disconnected</span></p>
+                    <p><span>Client ID:</span> <span id="infoClientId">-</span></p>
+                    <p><span>Broker:</span> <span id="infoBroker">-</span></p>
+                    <p><span>Protocol:</span> <span id="infoProtocol">-</span></p>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title"><i class="fas fa-bell"></i> Subscriptions</h2>
+                </div>
+                
+                <div class="form-group">
+                    <label for="subscribeTopic">Topic</label>
+                    <input type="text" id="subscribeTopic" placeholder="example/topic">
+                </div>
+                
+                <div class="form-row">
+                    <div>
+                        <label for="subscribeQos">QoS Level</label>
+                        <select id="subscribeQos">
+                            <option value="0">0 - At most once</option>
+                            <option value="1">1 - At least once</option>
+                            <option value="2">2 - Exactly once</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="subscribeBtn" class="btn btn-success" disabled>
+                        <i class="fas fa-plus-circle"></i> Subscribe
+                    </button>
+                    <button id="unsubscribeBtn" class="btn btn-outline" disabled>
+                        <i class="fas fa-minus-circle"></i> Unsubscribe
+                    </button>
+                </div>
+                
+                <div class="subscriptions-list" id="subscriptionsList">
+                    <p style="text-align: center; color: var(--gray-color); padding: 10px;">No active subscriptions</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="toolbar">
+                <div style="display: flex; align-items: center;">
+                    <button class="toggle-sidebar" id="toggleSidebar">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="messages">Messages</div>
+                        <div class="tab" data-tab="history">History</div>
+                        <div class="tab" data-tab="settings">Settings</div>
+                    </div>
+                </div>
+                <button class="clear-btn" id="clearLogBtn">
+                    <i class="fas fa-trash-alt"></i> Clear Log
+                </button>
+            </div>
+            
+            <div class="message-area">
+                <div class="panel message-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title"><i class="fas fa-inbox"></i> Received Messages</h2>
+                        <div class="panel-actions">
+                            <button class="btn btn-outline" id="pauseLogBtn">
+                                <i class="fas fa-pause"></i> Pause
+                            </button>
+                        </div>
+                    </div>
+                    <div id="messageLog"></div>
+                </div>
+                
+                <div class="panel publish-panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title"><i class="fas fa-paper-plane"></i> Publish Message</h2>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="publishTopic">Topic</label>
+                        <input type="text" id="publishTopic" placeholder="example/topic">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="publishMessage">Message</label>
+                        <textarea id="publishMessage" placeholder="Enter your message here..."></textarea>
+                    </div>
+                    
+                    <div class="message-controls">
+                        <select id="publishQos">
+                            <option value="0">QoS 0</option>
+                            <option value="1">QoS 1</option>
+                            <option value="2">QoS 2</option>
+                        </select>
+                        <select id="retainFlag">
+                            <option value="false">Retain: No</option>
+                            <option value="true">Retain: Yes</option>
+                        </select>
+                        <button id="publishBtn" class="btn btn-primary" disabled>
+                            <i class="fas fa-paper-plane"></i> Publish
+                        </button>
+                    </div>
+                    
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label>Quick Publish</label>
+                        <div class="btn-group">
+                            <button class="btn btn-outline quick-publish" data-message='{"status": "on"}'>
+                                <i class="fas fa-power-off"></i> ON
+                            </button>
+                            <button class="btn btn-outline quick-publish" data-message='{"status": "off"}'>
+                                <i class="fas fa-power-off"></i> OFF
+                            </button>
+                            <button class="btn btn-outline quick-publish" data-message='{"value": 25}'>
+                                <i class="fas fa-thermometer-half"></i> 25°
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // Global variables
+        let client = null;
+        let activeSubscriptions = new Map();
+        let isPaused = false;
+        let messageHistory = [];
+        let connectionAttempts = 0;
+        const maxReconnectAttempts = 5;
+        
+        // Generate random Client ID if empty
+        document.getElementById('clientId').value = 'mqtt_web_' + Math.random().toString(36).substr(2, 8);
+        
+        // Initialize UI
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up event listeners
+            document.getElementById('broker').addEventListener('change', handleBrokerChange);
+            document.getElementById('connectBtn').addEventListener('click', connect);
+            document.getElementById('disconnectBtn').addEventListener('click', disconnect);
+            document.getElementById('subscribeBtn').addEventListener('click', subscribe);
+            document.getElementById('unsubscribeBtn').addEventListener('click', unsubscribe);
+            document.getElementById('publishBtn').addEventListener('click', publish);
+            document.getElementById('clearLogBtn').addEventListener('click', clearLog);
+            document.getElementById('pauseLogBtn').addEventListener('click', togglePause);
+            document.getElementById('toggleSidebar').addEventListener('click', toggleSidebar);
+            document.querySelector('.sidebar-overlay').addEventListener('click', closeSidebar);
+            
+            // Quick publish buttons
+            document.querySelectorAll('.quick-publish').forEach(button => {
+                button.addEventListener('click', function() {
+                    const message = this.getAttribute('data-message');
+                    document.getElementById('publishMessage').value = message;
+                    document.getElementById('publishBtn').click();
+                });
+            });
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // You would implement tab content switching here
+                    console.log('Switched to tab:', this.getAttribute('data-tab'));
+                });
+            });
+            
+            // Handle window resize
+            window.addEventListener('resize', handleResize);
+            handleResize(); // Check initial size
+            
+            // Load saved settings
+            loadSettings();
+        });
+        
+        function handleResize() {
+            // Reset sidebar if window is resized beyond mobile breakpoint
+            if (window.innerWidth > 768) {
+                document.querySelector('.sidebar').classList.remove('active');
+                document.querySelector('.sidebar-overlay').classList.remove('active');
+            }
+        }
+        
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('active');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
+        }
+        
+        function closeSidebar() {
+            document.querySelector('.sidebar').classList.remove('active');
+            document.querySelector('.sidebar-overlay').classList.remove('active');
+        }
+        
+        function handleBrokerChange() {
+            const brokerSelect = document.getElementById('broker');
+            const customBrokerGroup = document.getElementById('customBrokerGroup');
+            
+            if (brokerSelect.value === 'custom') {
+                customBrokerGroup.style.display = 'block';
+            } else {
+                customBrokerGroup.style.display = 'none';
+            }
+        }
+        
+        function connect() {
+            const brokerSelect = document.getElementById('broker');
+            let brokerUrl = brokerSelect.value;
+            
+            if (brokerUrl === 'custom') {
+                brokerUrl = document.getElementById('customBroker').value;
+                if (!brokerUrl) {
+                    showToast('Please enter broker URL', 'error');
+                    return;
+                }
+            }
+            
+            const clientId = document.getElementById('clientId').value || 
+                            'mqtt_web_' + Math.random().toString(36).substr(2, 8);
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Connection options
+            const options = {
+                clientId: clientId,
+                clean: true,
+                reconnectPeriod: 5000,
+                connectTimeout: 30000,
+                keepalive: 60
+            };
+            
+            if (username) options.username = username;
+            if (password) options.password = password;
+            
+            showToast('Connecting to broker...', 'info');
+            updateConnectionStatus('Connecting...');
+            
+            try {
+                client = mqtt.connect(brokerUrl, options);
+                
+                // Event handlers
+                client.on('connect', function() {
+                    connectionAttempts = 0;
+                    showToast('Connected to broker', 'success');
+                    updateConnectionStatus('Connected');
+                    updateUIConnected(true);
+                    logSystemMessage('Connected to MQTT broker');
+                    
+                    // Update connection info panel
+                    document.getElementById('connectionInfo').style.display = 'block';
+                    document.getElementById('infoClientId').textContent = clientId;
+                    document.getElementById('infoBroker').textContent = brokerUrl;
+                    document.getElementById('infoProtocol').textContent = client.options.protocol;
+                    
+                    // Close sidebar on mobile after connecting
+                    if (window.innerWidth <= 768) {
+                        closeSidebar();
+                    }
+                    
+                    // Re-subscribe to any topics if reconnecting
+                    if (activeSubscriptions.size > 0) {
+                        activeSubscriptions.forEach((qos, topic) => {
+                            client.subscribe(topic                            , { qos: qos }, function(err) {
+                                if (err) {
+                                    showToast(`Failed to resubscribe to ${topic}`, 'error');
+                                } else {
+                                    logSystemMessage(`Resubscribed to topic: ${topic}`);
+                                }
+                            });
+                        });
+                    }
+                });
+
+                client.on('error', function(err) {
+                    console.error('MQTT Error:', err);
+                    updateConnectionStatus('Error');
+                    showToast(`Connection error: ${err.message}`, 'error');
+                    disconnect();
+                });
+
+                client.on('close', function() {
+                    if (connectionAttempts < maxReconnectAttempts) {
+                        connectionAttempts++;
+                        setTimeout(connect, 5000); // Retry connection after 5 seconds
+                    } else {
+                        updateConnectionStatus('Disconnected');
+                        showToast('Max reconnection attempts reached. Please try again.', 'error');
+                    }
+                });
+
+                client.on('message', function(topic, message, packet) {
+                    const msg = {
+                        topic: topic,
+                        message: message.toString(),
+                        qos: packet.qos,
+                        retain: packet.retain,
+                        timestamp: new Date()
+                    };
+                    logReceivedMessage(msg);
+                    saveToHistory(msg);
+                });
+
+            } catch (err) {
+                console.error('MQTT Connection Error:', err);
+                showToast(`Failed to connect: ${err.message}`, 'error');
+                updateConnectionStatus('Disconnected');
+            }
+        }
+
+        function disconnect() {
+            if (client && client.connected) {
+                client.end(true, function() {
+                    updateConnectionStatus('Disconnected');
+                    updateUIConnected(false);
+                    showToast('Disconnected from broker', 'info');
+                    logSystemMessage('Disconnected from MQTT broker');
+                    document.getElementById('connectionInfo').style.display = 'none';
+                });
+            }
+        }
+
+        function subscribe() {
+            const topic = document.getElementById('subscribeTopic').value.trim();
+            const qos = parseInt(document.getElementById('subscribeQos').value, 10);
+
+            if (!topic) {
+                showToast('Please enter a valid topic', 'error');
+                return;
+            }
+
+            if (client && client.connected) {
+                client.subscribe(topic, { qos: qos }, function(err) {
+                    if (err) {
+                        showToast(`Failed to subscribe to ${topic}: ${err.message}`, 'error');
+                    } else {
+                        activeSubscriptions.set(topic, qos);
+                        updateSubscriptionList();
+                        showToast(`Subscribed to ${topic}`, 'success');
+                        logSystemMessage(`Subscribed to topic: ${topic} (QoS: ${qos})`);
+                    }
+                });
+            } else {
+                showToast('Not connected to broker', 'error');
+            }
+        }
+
+        function unsubscribe() {
+            const topic = document.getElementById('subscribeTopic').value.trim();
+
+            if (!topic) {
+                showToast('Please enter a valid topic', 'error');
+                return;
+            }
+
+            if (client && client.connected) {
+                client.unsubscribe(topic, function(err) {
+                    if (err) {
+                        showToast(`Failed to unsubscribe from ${topic}: ${err.message}`, 'error');
+                    } else {
+                        activeSubscriptions.delete(topic);
+                        updateSubscriptionList();
+                        showToast(`Unsubscribed from ${topic}`, 'success');
+                        logSystemMessage(`Unsubscribed from topic: ${topic}`);
+                    }
+                });
+            } else {
+                showToast('Not connected to broker', 'error');
+            }
+        }
+
+        function publish() {
+            const topic = document.getElementById('publishTopic').value.trim();
+            const message = document.getElementById('publishMessage').value.trim();
+            const qos = parseInt(document.getElementById('publishQos').value, 10);
+            const retain = document.getElementById('retainFlag').value === 'true';
+
+            if (!topic || !message) {
+                showToast('Please enter both topic and message', 'error');
+                return;
+            }
+
+            if (client && client.connected) {
+                client.publish(topic, message, { qos: qos, retain: retain }, function(err) {
+                    if (err) {
+                        showToast(`Failed to publish message: ${err.message}`, 'error');
+                    } else {
+                        logPublishedMessage(topic, message, qos, retain);
+                        showToast(`Message published to ${topic}`, 'success');
+                    }
+                });
+            } else {
+                showToast('Not connected to broker', 'error');
+            }
+        }
+
+        function clearLog() {
+            document.getElementById('messageLog').innerHTML = '';
+            messageHistory = [];
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const pauseBtn = document.getElementById('pauseLogBtn');
+            if (isPaused) {
+                pauseBtn.textContent = 'Resume';
+                pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+            } else {
+                pauseBtn.textContent = 'Pause';
+                pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            }
+        }
+
+        function updateConnectionStatus(status) {
+            const statusIndicator = document.querySelector('.status-indicator');
+            const statusText = document.querySelector('.connection-status span');
+
+            if (status === 'Connected') {
+                statusIndicator.classList.add('connected');
+                statusText.textContent = 'Connected';
+            } else {
+                statusIndicator.classList.remove('connected');
+                statusText.textContent = status;
+            }
+        }
+
+        function updateUIConnected(isConnected) {
+            document.getElementById('connectBtn').disabled = isConnected;
+            document.getElementById('disconnectBtn').disabled = !isConnected;
+            document.getElementById('subscribeBtn').disabled = !isConnected;
+            document.getElementById('unsubscribeBtn').disabled = !isConnected;
+            document.getElementById('publishBtn').disabled = !isConnected;
+        }
+
+        function updateSubscriptionList() {
+            const list = document.getElementById('subscriptionsList');
+            list.innerHTML = '';
+
+            if (activeSubscriptions.size === 0) {
+                list.innerHTML = '<p style="text-align: center; color: var(--gray-color); padding: 10px;">No active subscriptions</p>';
+                return;
+            }
+
+            activeSubscriptions.forEach((qos, topic) => {
+                const item = document.createElement('div');
+                item.className = 'subscription-item';
+
+                const topicSpan = document.createElement('span');
+                topicSpan.textContent = topic;
+
+                const actions = document.createElement('div');
+                actions.className = 'subscription-actions';
+
+                const unsubscribeBtn = document.createElement('button');
+                unsubscribeBtn.className = 'subscription-btn';
+                unsubscribeBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                unsubscribeBtn.title = 'Unsubscribe';
+                unsubscribeBtn.addEventListener('click', function() {
+                    document.getElementById('subscribeTopic').value = topic;
+                    unsubscribe();
+                });
+
+                actions.appendChild(unsubscribeBtn);
+                item.appendChild(topicSpan);
+                item.appendChild(actions);
+                list.appendChild(item);
+            });
+        }
+
+        function logReceivedMessage(msg) {
+            if (isPaused) return;
+
+            const log = document.getElementById('messageLog');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message received';
+
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = `[${msg.timestamp.toLocaleTimeString()}] `;
+
+            const topic = document.createElement('span');
+            topic.className = 'topic';
+            topic.textContent = `${msg.topic} `;
+
+            const content = document.createTextNode(`${msg.message}`);
+
+            messageDiv.appendChild(timestamp);
+            messageDiv.appendChild(topic);
+            messageDiv.appendChild(content);
+            log.appendChild(messageDiv);
+
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function logPublishedMessage(topic, message, qos, retain) {
+            const log = document.getElementById('messageLog');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message published';
+
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = `[${new Date().toLocaleTimeString()}] `;
+
+            const topicSpan = document.createElement('span');
+            topicSpan.className = 'topic';
+            topicSpan.textContent = `${topic} `;
+
+            const qosSpan = document.createElement('span');
+            qosSpan.style.color = '#6c757d';
+            qosSpan.textContent = `(QoS: ${qos}, Retain: ${retain ? 'Yes' : 'No'}) `;
+
+            const content = document.createTextNode(`${message}`);
+
+            messageDiv.appendChild(timestamp);
+            messageDiv.appendChild(topicSpan);
+            messageDiv.appendChild(qosSpan);
+            messageDiv.appendChild(content);
+            log.appendChild(messageDiv);
+
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function logSystemMessage(message) {
+            const log = document.getElementById('messageLog');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message system';
+
+            const timestamp = document.createElement('span');
+            timestamp.className = 'timestamp';
+            timestamp.textContent = `[${new Date().toLocaleTimeString()}] `;
+
+            const content = document.createTextNode(message);
+
+            messageDiv.appendChild(timestamp);
+            messageDiv.appendChild(content);
+            log.appendChild(messageDiv);
+
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function saveToHistory(msg) {
+            messageHistory.push(msg);
+            // Optionally limit history size
+            if (messageHistory.length > 100) {
+                messageHistory.shift();
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<i class="fas ${getIconClass(type)}"></i> ${message}`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                container.removeChild(toast);
+            }, 3000);
+        }
+
+        function getIconClass(type) {
+            switch (type) {
+                case 'success':
+                    return 'fa-check-circle';
+                case 'error':
+                    return 'fa-exclamation-circle';
+                case 'warning':
+                    return 'fa-exclamation-triangle';
+                default:
+                    return 'fa-info-circle';
+            }
+        }
+
+        function loadSettings() {
+            const savedBroker = localStorage.getItem('mqtt_broker');
+            const savedClientId = localStorage.getItem('mqtt_clientId');
+            const savedUsername = localStorage.getItem('mqtt_username');
+            const savedCustomBroker = localStorage.getItem('mqtt_customBroker');
+
+            if (savedBroker) {
+                document.getElementById('broker').value = savedBroker;
+                handleBrokerChange();
+                if (savedBroker === 'custom' && savedCustomBroker) {
+                    document.getElementById('customBroker').value = savedCustomBroker;
+                }
+            }
+
+            if (savedClientId) {
+                document.getElementById('clientId').value = savedClientId;
+            }
+
+            if (savedUsername) {
+                document.getElementById('username').value = savedUsername;
+            }
+        }
+
+        function saveSettings() {
+            const broker = document.getElementById('broker').value;
+            const clientId = document.getElementById('clientId').value;
+            const username = document.getElementById('username').value;
+            const customBroker = document.getElementById('customBroker').value;
+
+            localStorage.setItem('mqtt_broker', broker);
+            localStorage.setItem('mqtt_clientId', clientId);
+            localStorage.setItem('mqtt_username', username);
+
+            if (broker === 'custom') {
+                localStorage.setItem('mqtt_customBroker', customBroker);
+            } else {
+                localStorage.removeItem('mqtt_customBroker');
+            }
+        }
+
+        window.addEventListener('beforeunload', saveSettings);
+    </script>
+</body>
+</html>
